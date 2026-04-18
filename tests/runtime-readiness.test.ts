@@ -83,11 +83,14 @@ describe("runtime readiness", () => {
     expect(readiness.deployment).toBe("vercel");
     expect(readiness.status).toBe("setup-required");
     expect(readiness.uploadsEnabled).toBe(false);
-    expect(readiness.missingEnvVars).toEqual(["BLOB_READ_WRITE_TOKEN"]);
+    expect(readiness.missingEnvVars).toEqual([
+      "DATABASE_URL",
+      "BLOB_READ_WRITE_TOKEN",
+    ]);
     expect(shouldUseInlineIngestion()).toBe(true);
   });
 
-  it("treats Vercel deployments with Blob-backed persistence as production-ready", () => {
+  it("keeps Vercel uploads disabled until Postgres is configured", () => {
     setEnv({
       VERCEL: "1",
       DATABASE_URL: undefined,
@@ -99,10 +102,10 @@ describe("runtime readiness", () => {
     const readiness = getRuntimeReadiness();
 
     expect(readiness.deployment).toBe("vercel");
-    expect(readiness.status).toBe("ready");
-    expect(readiness.uploadsEnabled).toBe(true);
-    expect(readiness.missingEnvVars).toEqual([]);
-    expect(shouldUseInlineIngestion()).toBe(false);
+    expect(readiness.status).toBe("setup-required");
+    expect(readiness.uploadsEnabled).toBe(false);
+    expect(readiness.missingEnvVars).toEqual(["DATABASE_URL"]);
+    expect(shouldUseInlineIngestion()).toBe(true);
   });
 
   it("treats Vercel deployments with Postgres and Blob as production-ready", () => {

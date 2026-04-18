@@ -9,9 +9,21 @@ import {
   getDocumentPersistenceErrorMessage,
   isBlobStorageConfigured,
 } from "@/lib/env";
-import { sanitizeFilename } from "@/lib/utils";
+import { sanitizeFilename, summarizeError } from "@/lib/utils";
 
 const LOCAL_UPLOADS_DIR = join(cwd(), ".local-data", "uploads");
+
+function normalizeBlobStorageError(error: unknown): Error {
+  const message = summarizeError(error);
+
+  if (/cannot use private access on a public store/i.test(message)) {
+    return new Error(
+      "This deployment is linked to a public Vercel Blob store, but uploaded PDFs require a private Blob store. Replace BLOB_READ_WRITE_TOKEN with a token from a private store.",
+    );
+  }
+
+  return error instanceof Error ? error : new Error(message);
+}
 
 async function ensureLocalUploadDir(documentId?: string): Promise<string> {
   const target = documentId ? join(LOCAL_UPLOADS_DIR, documentId) : LOCAL_UPLOADS_DIR;
@@ -41,11 +53,17 @@ export async function uploadDocumentSource(
     };
   }
 
-  const blob = await put(pathname, file, {
-    access: "private",
-    addRandomSuffix: false,
-    multipart: file.size > 5_000_000,
-  });
+  let blob;
+
+  try {
+    blob = await put(pathname, file, {
+      access: "private",
+      addRandomSuffix: false,
+      multipart: file.size > 5_000_000,
+    });
+  } catch (error) {
+    throw normalizeBlobStorageError(error);
+  }
 
   return {
     pathname: blob.pathname,
@@ -68,7 +86,13 @@ export async function getDocumentSource(pathname: string) {
     };
   }
 
-  const result = await get(pathname, { access: "private" });
+  let result;
+
+  try {
+    result = await get(pathname, { access: "private" });
+  } catch (error) {
+    throw normalizeBlobStorageError(error);
+  }
 
   if (!result || result.statusCode !== 200 || !result.stream) {
     throw new Error("Document source could not be found in blob storage.");

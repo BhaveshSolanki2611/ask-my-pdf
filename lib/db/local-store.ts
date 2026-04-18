@@ -1,12 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { cwd } from "node:process";
-import { Readable } from "node:stream";
-import { get, put } from "@vercel/blob";
-import {
-  canUseLocalPersistence,
-  isBlobStorageConfigured,
-} from "@/lib/env";
 import type {
   ChunkDraft,
   DocumentStatus,
@@ -31,18 +25,6 @@ type LocalStore = {
 
 const DATA_DIR = join(cwd(), ".local-data");
 const STORE_PATH = join(DATA_DIR, "store.json");
-const BLOB_STORE_PATH = "documents/internal/store.json";
-
-function createEmptyStore(): LocalStore {
-  return {
-    documents: [],
-    chunks: [],
-  };
-}
-
-function shouldUseBlobBackedStore(): boolean {
-  return !canUseLocalPersistence() && isBlobStorageConfigured();
-}
 
 async function ensureFilesystemStore(): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
@@ -50,7 +32,18 @@ async function ensureFilesystemStore(): Promise<void> {
   try {
     await readFile(STORE_PATH, "utf8");
   } catch {
-    await writeFile(STORE_PATH, JSON.stringify(createEmptyStore(), null, 2), "utf8");
+    await writeFile(
+      STORE_PATH,
+      JSON.stringify(
+        {
+          documents: [],
+          chunks: [],
+        } satisfies LocalStore,
+        null,
+        2,
+      ),
+      "utf8",
+    );
   }
 }
 
@@ -67,58 +60,11 @@ async function writeFilesystemStore(nextStore: LocalStore): Promise<void> {
   await rename(tempPath, STORE_PATH);
 }
 
-async function readBlobBackedStore(): Promise<LocalStore> {
-  try {
-    const result = await get(BLOB_STORE_PATH, { access: "private" });
-
-    if (!result || result.statusCode !== 200 || !result.stream) {
-      return createEmptyStore();
-    }
-
-    const stream =
-      result.stream instanceof Readable
-        ? (Readable.toWeb(result.stream) as ReadableStream<Uint8Array>)
-        : result.stream;
-    const raw = await new Response(stream).text();
-
-    if (!raw.trim()) {
-      return createEmptyStore();
-    }
-
-    return JSON.parse(raw) as LocalStore;
-  } catch (error) {
-    const message = summarizeError(error);
-
-    if (/404|not found|does not exist/i.test(message)) {
-      return createEmptyStore();
-    }
-
-    throw error;
-  }
-}
-
-async function writeBlobBackedStore(nextStore: LocalStore): Promise<void> {
-  await put(BLOB_STORE_PATH, JSON.stringify(nextStore, null, 2), {
-    access: "private",
-    addRandomSuffix: false,
-    contentType: "application/json",
-  });
-}
-
 export async function readLocalStore(): Promise<LocalStore> {
-  if (shouldUseBlobBackedStore()) {
-    return readBlobBackedStore();
-  }
-
   return readFilesystemStore();
 }
 
 async function writeLocalStore(nextStore: LocalStore): Promise<void> {
-  if (shouldUseBlobBackedStore()) {
-    await writeBlobBackedStore(nextStore);
-    return;
-  }
-
   await writeFilesystemStore(nextStore);
 }
 

@@ -92,6 +92,12 @@ export function summarizeError(error: unknown): string {
   return "An unexpected error occurred.";
 }
 
+export function isDeploymentSetupErrorMessage(message: string): boolean {
+  return /uploads are disabled in this deployment|document persistence|public vercel blob store|private blob store/i.test(
+    message,
+  );
+}
+
 export function dedupeStrings(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }

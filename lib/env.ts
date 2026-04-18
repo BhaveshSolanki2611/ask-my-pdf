@@ -76,23 +76,13 @@ export function canUseLocalPersistence(): boolean {
   return !isVercelDeployment();
 }
 
-export function canUseFallbackDocumentStore(): boolean {
-  return canUseLocalPersistence() || isBlobStorageConfigured();
-}
-
 export function isDurableDocumentPersistenceConfigured(): boolean {
-  return isBlobStorageConfigured();
+  return isDatabaseConfigured() && isBlobStorageConfigured();
 }
 
 export function getRuntimeCapabilities(): RuntimeCapabilities {
-  const database: RuntimeCapabilities["database"] = isDatabaseConfigured()
-    ? "postgres"
-    : isVercelDeployment() && isBlobStorageConfigured()
-      ? "blob-json"
-      : "local-json";
-
   return {
-    database,
+    database: isDatabaseConfigured() ? "postgres" : "local-json",
     storage: isBlobStorageConfigured() ? "vercel-blob" : "local-filesystem",
     parser: isLlamaParseConfigured() ? "llamaparse" : "local-layout-parser",
     ai: isHostedAiConfigured() ? "hosted-model" : "local-heuristic",
@@ -100,6 +90,11 @@ export function getRuntimeCapabilities(): RuntimeCapabilities {
 }
 
 export function getRuntimeReadiness(): RuntimeReadiness {
+  const missingEnvVars = [
+    !isDatabaseConfigured() ? "DATABASE_URL" : null,
+    !isBlobStorageConfigured() ? "BLOB_READ_WRITE_TOKEN" : null,
+  ].filter((value): value is string => Boolean(value));
+
   if (!isVercelDeployment()) {
     return {
       deployment: "local",
@@ -108,32 +103,20 @@ export function getRuntimeReadiness(): RuntimeReadiness {
       missingEnvVars: [],
       summary: "Local fallback mode is enabled for development.",
       detail:
-        "This machine can use on-disk storage locally. For a Vercel deployment, configure BLOB_READ_WRITE_TOKEN for durable uploads. DATABASE_URL is optional and enables the Postgres retrieval backend.",
+        "This machine can use on-disk storage locally. For a Vercel deployment, configure DATABASE_URL plus a BLOB_READ_WRITE_TOKEN from a private Blob store for durable uploads.",
     };
   }
 
-  if (!isBlobStorageConfigured()) {
+  if (missingEnvVars.length) {
     return {
       deployment: "vercel",
       status: "setup-required",
       uploadsEnabled: false,
-      missingEnvVars: ["BLOB_READ_WRITE_TOKEN"],
+      missingEnvVars,
       summary:
         "Uploads are disabled in this deployment until durable storage is configured.",
       detail:
-        "Set BLOB_READ_WRITE_TOKEN in Vercel so uploaded PDFs, document metadata, and retrieval chunks persist across requests. Add DATABASE_URL later if you want the Postgres retrieval backend.",
-    };
-  }
-
-  if (!isDatabaseConfigured()) {
-    return {
-      deployment: "vercel",
-      status: "ready",
-      uploadsEnabled: true,
-      missingEnvVars: [],
-      summary: "This deployment is configured for durable PDF uploads.",
-      detail:
-        "Uploads, document metadata, and retrieval chunks are persisting in private Vercel Blob storage. Text PDFs are production-ready. Add DATABASE_URL later to switch to the Postgres + pgvector backend, and LLAMA_CLOUD_API_KEY for scanned-PDF OCR.",
+        "Set DATABASE_URL and a private-store BLOB_READ_WRITE_TOKEN in Vercel so uploaded PDFs, document metadata, retrieval chunks, and source downloads persist correctly across requests.",
     };
   }
 
@@ -165,7 +148,7 @@ export function assertDocumentPersistenceConfigured(): void {
 }
 
 export function shouldUseInlineIngestion(): boolean {
-  return !isBlobStorageConfigured();
+  return !isDurableDocumentPersistenceConfigured();
 }
 
 export const __envTestUtils = {

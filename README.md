@@ -82,8 +82,8 @@ Key rules enforced there:
 
 Copy `.env.example` to `.env.local` and set:
 
-- `BLOB_READ_WRITE_TOKEN`
 - `DATABASE_URL`
+- `BLOB_READ_WRITE_TOKEN`
 - `LLAMA_CLOUD_API_KEY`
 - `AI_GATEWAY_API_KEY`
 
@@ -98,9 +98,12 @@ Local fallback is enough to test text-based PDFs end to end. Scanned PDFs still 
 
 ## Production Deployment Notes
 
-For a Vercel deployment, the app requires `BLOB_READ_WRITE_TOKEN` before it will accept PDF uploads.
+For a Vercel deployment, the app requires both:
 
-With Blob configured but no `DATABASE_URL`, the deployed app keeps document metadata and chunks in a private JSON blob so text PDFs still work end to end. Adding `DATABASE_URL` upgrades retrieval to the Postgres + pgvector backend.
+- `DATABASE_URL`
+- `BLOB_READ_WRITE_TOKEN`
+
+The Blob token must come from a **private** Blob store because uploaded PDFs are read back with private access during ingestion and source download.
 
 Optional production upgrades:
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/env";
 import { uploadDocumentSource } from "@/lib/storage";
 import { startDocumentIngestion } from "@/lib/workflow/start-ingestion";
-import { summarizeError } from "@/lib/utils";
+import { isDeploymentSetupErrorMessage, summarizeError } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -119,11 +119,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = summarizeError(error);
-    const status = /uploads are disabled in this deployment|document persistence/i.test(
-      message,
-    )
-      ? 503
-      : 500;
+    const status = isDeploymentSetupErrorMessage(message) ? 503 : 500;
 
     return NextResponse.json(
       { error: message },
