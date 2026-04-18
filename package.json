@@ -1,0 +1,35 @@
+{
+  "name": "pdf-support-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:pdf": "vitest run tests/pdf-support.local.test.ts tests/pdf-support.retrieval.test.ts tests/pdf-support.ingestion.test.ts tests/pdf-support.chunking.test.ts"
+  },
+  "dependencies": {
+    "@llamaindex/llama-cloud": "^2.4.0",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@vercel/blob": "^2.3.3",
+    "ai": "^6.0.168",
+    "clsx": "^2.1.1",
+    "next": "^16.2.4",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.20.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.2",
+    "workflow": "^4.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
+  }
+}

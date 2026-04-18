@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4efe6;
+  --background-deep: #e7decd;
+  --surface: rgba(255, 250, 240, 0.84);
+  --surface-strong: rgba(252, 247, 238, 0.96);
+  --line: rgba(65, 48, 28, 0.14);
+  --text: #24190d;
+  --muted: #6b5a45;
+  --accent: #b45f2f;
+  --accent-soft: rgba(180, 95, 47, 0.16);
+  --success: #255c3a;
+  --font-sans: "Segoe UI Variable", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 32%),
+    radial-gradient(circle at top right, rgba(200, 124, 71, 0.18), transparent 26%),
+    linear-gradient(145deg, var(--background) 0%, var(--background-deep) 100%);
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(180, 95, 47, 0.22);
+}
+
+.glass-panel {
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 48px rgba(57, 35, 16, 0.08);
+}
+
+.soft-panel {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(57, 35, 16, 0.06);
+}
