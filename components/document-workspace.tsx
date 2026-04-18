@@ -173,7 +173,10 @@ export function DocumentWorkspace({
         </div>
 
         <div className="space-y-6">
-          <RuntimeCapabilityBanner capabilities={document.capabilities} />
+          <RuntimeCapabilityBanner
+            capabilities={document.capabilities}
+            readiness={document.readiness}
+          />
           <ProcessingStatus
             chunkCount={document.chunkCount}
             errorMessage={document.errorMessage}

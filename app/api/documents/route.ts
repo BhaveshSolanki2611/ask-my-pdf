@@ -5,7 +5,11 @@ import {
   setDocumentWorkflowRunId,
 } from "@/lib/db/documents";
 import { performDocumentIngestion } from "@/lib/documents/ingest";
-import { getServerEnv, shouldUseInlineIngestion } from "@/lib/env";
+import {
+  assertDocumentPersistenceConfigured,
+  getServerEnv,
+  shouldUseInlineIngestion,
+} from "@/lib/env";
 import { uploadDocumentSource } from "@/lib/storage";
 import { startDocumentIngestion } from "@/lib/workflow/start-ingestion";
 import { summarizeError } from "@/lib/utils";
@@ -36,6 +40,7 @@ function workflowRunIdFromResult(result: unknown): string | null {
 export async function POST(request: Request) {
   try {
     const env = getServerEnv();
+    assertDocumentPersistenceConfigured();
     const formData = await request.formData();
     const file = formData.get("file");
 
@@ -113,9 +118,16 @@ export async function POST(request: Request) {
       redirectTo: `/documents/${documentId}`,
     });
   } catch (error) {
+    const message = summarizeError(error);
+    const status = /uploads are disabled in this deployment|document persistence/i.test(
+      message,
+    )
+      ? 503
+      : 500;
+
     return NextResponse.json(
-      { error: summarizeError(error) },
-      { status: 500 },
+      { error: message },
+      { status },
     );
   }
 }

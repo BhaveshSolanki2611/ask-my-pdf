@@ -96,6 +96,20 @@ If you do **not** set these, the app now boots in a local fallback mode:
 
 Local fallback is enough to test text-based PDFs end to end. Scanned PDFs still need `LLAMA_CLOUD_API_KEY` so OCR can run.
 
+## Production Deployment Notes
+
+For a Vercel deployment, the app now requires durable document storage before it will accept PDF uploads:
+
+- `DATABASE_URL`
+- `BLOB_READ_WRITE_TOKEN`
+
+Without those two variables, the deployed UI will stay online but uploads are intentionally disabled so the app does not fall back to an unsafe serverless filesystem mode.
+
+Optional production upgrades:
+
+- `LLAMA_CLOUD_API_KEY` for scanned-PDF OCR
+- `AI_GATEWAY_API_KEY` (or `VERCEL_OIDC_TOKEN`) for hosted answer generation
+
 Optional:
 
 - `ANSWER_MODEL` defaults to `openai/gpt-5.4`

@@ -4,7 +4,11 @@ import { join } from "node:path";
 import { cwd } from "node:process";
 import { Readable } from "node:stream";
 import { get, put } from "@vercel/blob";
-import { isBlobStorageConfigured } from "@/lib/env";
+import {
+  canUseLocalPersistence,
+  getDocumentPersistenceErrorMessage,
+  isBlobStorageConfigured,
+} from "@/lib/env";
 import { sanitizeFilename } from "@/lib/utils";
 
 const LOCAL_UPLOADS_DIR = join(cwd(), ".local-data", "uploads");
@@ -22,6 +26,10 @@ export async function uploadDocumentSource(
   const pathname = `documents/${documentId}/${Date.now()}-${sanitizeFilename(file.name)}`;
 
   if (!isBlobStorageConfigured()) {
+    if (!canUseLocalPersistence()) {
+      throw new Error(getDocumentPersistenceErrorMessage());
+    }
+
     const targetDir = await ensureLocalUploadDir(documentId);
     const localPath = join(targetDir, `${Date.now()}-${sanitizeFilename(file.name)}`);
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -47,6 +55,10 @@ export async function uploadDocumentSource(
 
 export async function getDocumentSource(pathname: string) {
   if (!isBlobStorageConfigured()) {
+    if (!canUseLocalPersistence()) {
+      throw new Error(getDocumentPersistenceErrorMessage());
+    }
+
     return {
       statusCode: 200,
       stream: createReadStream(pathname),

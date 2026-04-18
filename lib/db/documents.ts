@@ -11,7 +11,13 @@ import {
   setLocalDocumentStatus,
   updateLocalDocument,
 } from "@/lib/db/local-store";
-import { getRuntimeCapabilities, isDatabaseConfigured } from "@/lib/env";
+import {
+  canUseLocalPersistence,
+  getDocumentPersistenceErrorMessage,
+  getRuntimeCapabilities,
+  getRuntimeReadiness,
+  isDatabaseConfigured,
+} from "@/lib/env";
 import {
   diversifyRetrievedChunks,
   rerankRetrievedChunks,
@@ -34,6 +40,12 @@ import {
   toPgVector,
   dedupeStrings,
 } from "@/lib/utils";
+
+function assertLocalPersistenceAvailable(): void {
+  if (!canUseLocalPersistence()) {
+    throw new Error(getDocumentPersistenceErrorMessage());
+  }
+}
 
 type DocumentRow = {
   id: string;
@@ -103,6 +115,7 @@ export async function createDocumentRecord(input: {
   blobUrl: string | null;
 }): Promise<StoredDocument> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     return createLocalDocument(input);
   }
 
@@ -145,6 +158,7 @@ export async function setDocumentWorkflowRunId(
   workflowRunId: string,
 ): Promise<void> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     await updateLocalDocument(documentId, (document) => {
       document.workflowRunId = workflowRunId;
     });
@@ -169,6 +183,7 @@ export async function updateDocumentStatus(
   errorMessage?: string | null,
 ): Promise<void> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     await setLocalDocumentStatus(documentId, status, errorMessage);
     return;
   }
@@ -193,6 +208,7 @@ export async function updateDocumentParsedData(input: {
   parserMeta: Record<string, unknown>;
 }): Promise<void> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     await setLocalDocumentParsedData(input);
     return;
   }
@@ -221,6 +237,7 @@ export async function replaceDocumentChunks(
   chunks: Array<ChunkDraft & { id: string; embedding: number[] }>,
 ): Promise<void> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     await replaceLocalChunks(documentId, chunks);
     return;
   }
@@ -299,6 +316,7 @@ export async function markDocumentFailed(
   error: unknown,
 ): Promise<void> {
   if (!isDatabaseConfigured()) {
+    assertLocalPersistenceAvailable();
     await markLocalDocumentFailed(documentId, error);
     return;
   }
@@ -310,6 +328,10 @@ export async function getDocumentById(
   documentId: string,
 ): Promise<StoredDocument | null> {
   if (!isDatabaseConfigured()) {
+    if (!canUseLocalPersistence()) {
+      return null;
+    }
+
     return getLocalDocumentById(documentId);
   }
 
@@ -357,6 +379,7 @@ export async function getPublicDocument(
     needsReingestion: needsDocumentReingestion(document),
     chunkCount: await getDocumentChunkCount(documentId),
     capabilities: getRuntimeCapabilities(),
+    readiness: getRuntimeReadiness(),
   };
 }
 
@@ -367,6 +390,10 @@ export async function searchDocumentChunks(input: {
   limit?: number;
 }): Promise<StoredChunk[]> {
   if (!isDatabaseConfigured()) {
+    if (!canUseLocalPersistence()) {
+      return [];
+    }
+
     return searchLocalChunks({
       documentId: input.documentId,
       question: input.question,
@@ -461,6 +488,10 @@ export async function searchDocumentChunks(input: {
 
 export async function getDocumentChunkCount(documentId: string): Promise<number> {
   if (!isDatabaseConfigured()) {
+    if (!canUseLocalPersistence()) {
+      return 0;
+    }
+
     return getLocalChunkCount(documentId);
   }
 

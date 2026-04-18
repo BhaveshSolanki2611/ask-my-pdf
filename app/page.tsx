@@ -1,6 +1,6 @@
 import { RuntimeCapabilityBanner } from "@/components/runtime-capability-banner";
 import { UploadForm } from "@/components/upload-form";
-import { getRuntimeCapabilities } from "@/lib/env";
+import { getRuntimeCapabilities, getRuntimeReadiness } from "@/lib/env";
 
 const buildSteps = [
   "Upload one PDF and store the original in private blob storage.",
@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   const capabilities = getRuntimeCapabilities();
+  const readiness = getRuntimeReadiness();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-10 px-6 py-8 lg:px-10">
@@ -55,8 +56,12 @@ export default function HomePage() {
             </p>
           </div>
           <div className="space-y-5">
-            <RuntimeCapabilityBanner capabilities={capabilities} compact />
-            <UploadForm capabilities={capabilities} />
+            <RuntimeCapabilityBanner
+              capabilities={capabilities}
+              compact
+              readiness={readiness}
+            />
+            <UploadForm capabilities={capabilities} readiness={readiness} />
           </div>
         </div>
       </section>

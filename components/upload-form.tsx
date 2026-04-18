@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
-import type { RuntimeCapabilities } from "@/lib/types";
+import type { RuntimeCapabilities, RuntimeReadiness } from "@/lib/types";
 
 type UploadResponse = {
   documentId: string;
@@ -12,8 +12,10 @@ type UploadResponse = {
 
 export function UploadForm({
   capabilities,
+  readiness,
 }: {
   capabilities: RuntimeCapabilities;
+  readiness: RuntimeReadiness;
 }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
@@ -23,6 +25,11 @@ export function UploadForm({
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!readiness.uploadsEnabled) {
+      setError(readiness.summary);
+      return;
+    }
 
     if (!file) {
       setError("Choose a PDF file before uploading.");
@@ -124,12 +131,22 @@ export function UploadForm({
         </div>
       ) : null}
 
+      {!readiness.uploadsEnabled ? (
+        <div className="rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-800">
+          {readiness.detail}
+        </div>
+      ) : null}
+
       <button
         className="inline-flex w-full items-center justify-center rounded-full bg-[color:var(--text)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={!file || isUploading}
+        disabled={!file || isUploading || !readiness.uploadsEnabled}
         type="submit"
       >
-        {isUploading ? "Uploading PDF..." : "Build Document Copilot"}
+        {isUploading
+          ? "Uploading PDF..."
+          : readiness.uploadsEnabled
+            ? "Build Document Copilot"
+            : "Configure Production Storage First"}
       </button>
     </form>
   );

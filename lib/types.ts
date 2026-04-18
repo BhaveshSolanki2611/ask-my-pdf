@@ -29,6 +29,15 @@ export type RuntimeCapabilities = {
   ai: "hosted-model" | "local-heuristic";
 };
 
+export type RuntimeReadiness = {
+  deployment: "local" | "vercel";
+  status: "ready" | "setup-required";
+  uploadsEnabled: boolean;
+  missingEnvVars: string[];
+  summary: string;
+  detail: string;
+};
+
 export type OutlineEntry = {
   id: string;
   title: string;
@@ -57,6 +66,7 @@ export type PublicDocument = Omit<StoredDocument, "blobPath"> & {
   needsReingestion: boolean;
   chunkCount: number | null;
   capabilities: RuntimeCapabilities;
+  readiness: RuntimeReadiness;
 };
 
 export type ChunkDraft = {

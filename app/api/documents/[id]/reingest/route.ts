@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPublicDocument, getDocumentById } from "@/lib/db/documents";
 import { performDocumentIngestion } from "@/lib/documents/ingest";
+import { assertDocumentPersistenceConfigured } from "@/lib/env";
 import { summarizeError } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -11,6 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    assertDocumentPersistenceConfigured();
     const { id } = await params;
     const document = await getDocumentById(id);
 
@@ -30,9 +32,16 @@ export async function POST(
       refreshed ?? { documentId: document.id, status: "ready" },
     );
   } catch (error) {
+    const message = summarizeError(error);
+    const status = /uploads are disabled in this deployment|document persistence/i.test(
+      message,
+    )
+      ? 503
+      : 500;
+
     return NextResponse.json(
-      { error: summarizeError(error) },
-      { status: 500 },
+      { error: message },
+      { status },
     );
   }
 }
