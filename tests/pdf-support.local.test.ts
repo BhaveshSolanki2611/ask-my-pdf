@@ -164,4 +164,53 @@ describe("local PDF answer synthesis", () => {
     expect(result.answer).toContain("~1 water");
     expect(result.answer).not.toContain("form a slurry");
   });
+
+  it("prefers formula chunks over explanatory composition FAQs for mix requirement questions", () => {
+    const result = generateLocalPdfSupportAnswer({
+      question:
+        "What is the mix ratio and water / booster requirement for FAT LIME concrete?",
+      mode: "answer",
+      chunks: [
+        ...mixCompositionChunks,
+        makeChunk({
+          label: "S5",
+          pageFrom: 21,
+          sectionPath: [
+            "FAQ MIX COMPOSITION & DESIGN",
+            "Why is Booster #1555 added to FAT LIME concrete?",
+          ],
+          text:
+            "FAQ MIX COMPOSITION & DESIGN > Why is Booster #1555 added to FAT LIME concrete?\nAdditives like jaggery and fenugreek are traditional, but MLIME offers Booster #1555 as a controlled way of improving the mix properties.",
+          score: 5.2,
+        }),
+      ],
+    });
+
+    expect(result.answer).toContain("1 FAT LIME");
+    expect(result.answer).toContain("~1 water");
+    expect(result.answer).toContain("62.5 gram Booster #1555");
+    expect(result.answer).not.toContain("jaggery");
+  });
+
+  it("keeps curing answers focused on curing sections instead of far-away compaction FAQs", () => {
+    const result = generateLocalPdfSupportAnswer({
+      question: "What is the curing regime after laying?",
+      mode: "answer",
+      chunks: [
+        ...curingChunks,
+        makeChunk({
+          label: "S3",
+          pageFrom: 22,
+          sectionPath: ["FAQ COMPACTION"],
+          text:
+            "FAQ COMPACTION\nDepending on the frequency and intensity of your compacting, it can take 2 to 4 weeks. Only carry on watering or curing the application till 4 weeks from the start date.",
+          score: 4.2,
+        }),
+      ],
+    });
+
+    expect(result.answer).toContain("72 hours");
+    expect(result.answer).toContain("daily watering");
+    expect(result.answer).not.toContain("Depending on the frequency and intensity");
+  });
 });

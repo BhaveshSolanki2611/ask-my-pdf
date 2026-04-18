@@ -203,11 +203,17 @@ function buildEvidenceSpan(
     bestScore +
     Math.min(1.2, (chunk.score ?? 0) * 0.14) +
     (intent.wantsNumericDetails && hasNumericSignal(selectedLines) ? 0.25 : 0) +
+    (intent.wantsComposition && hasCompositionFormulaSignal(selectedLines) ? 0.9 : 0) +
     (intent.wantsComposition &&
     /^\d/.test(sectionTitle) &&
     hasNumericSignal(selectedLines) &&
     selectedLines.some((line) => hasCompositionSignal(line))
       ? 0.75
+      : 0) +
+    (intent.wantsComposition &&
+    isExplanatoryCompositionSection(sectionTitle) &&
+    !hasCompositionFormulaSignal(selectedLines)
+      ? -1.25
       : 0) +
     (intent.wantsTools && hasToolSignal(selectedLines.join(" ")) ? 0.3 : 0) +
     (intent.kind === "procedure" ? 0.15 : 0);
@@ -404,12 +410,13 @@ function pickAnchorSpan(
         span.chunkType !== "faq" &&
         hasNumericSignal(span.lines) &&
         (/^\d/.test(span.sectionTitle) ||
-          span.lines.some((line) => hasCompositionSignal(line))),
+          span.lines.some((line) => hasCompositionSignal(line))) &&
+        (!intent.wantsComposition || hasCompositionFormulaSignal(span.lines)),
     );
 
     if (
       numericFormulaSpan &&
-      numericFormulaSpan.confidence >= (spans[0]?.confidence ?? 0) * 0.72
+      numericFormulaSpan.confidence >= (spans[0]?.confidence ?? 0) * 0.42
     ) {
       return numericFormulaSpan;
     }
@@ -459,9 +466,12 @@ function shouldIncludeSpan(
 
   if (
     intent.kind === "value" &&
-    (sameSection || nearbyPage) &&
     candidate.chunkType !== "faq" &&
-    (candidate.confidence >= anchor.confidence * 0.3 || newCoverage)
+    ((sameSection || nearbyPage) ||
+      (intent.wantsComposition &&
+        hasCompositionFormulaSignal(candidate.lines) &&
+        newCoverage)) &&
+    (candidate.confidence >= anchor.confidence * 0.24 || newCoverage)
   ) {
     return true;
   }
@@ -471,7 +481,11 @@ function shouldIncludeSpan(
   }
 
   if (intent.wantsCuring && hasCuringSignal(candidate.lines.join(" "))) {
-    return nearbyPage || strongEnough || newCoverage;
+    return (
+      nearbyPage ||
+      /curing regime|post-compaction/i.test(candidate.sectionKey) ||
+      (strongEnough && /curing regime|post-compaction/i.test(candidate.sectionKey))
+    );
   }
 
   if (
@@ -969,6 +983,21 @@ function hasCompositionFactSignal(line: string): boolean {
     /\bfor every \d+(?:[.,]\d+)?\s*kg\b/i.test(line) ||
     (/\d/.test(line) && hasCompositionSignal(line))
   );
+}
+
+function hasCompositionFormulaSignal(lines: string[]): boolean {
+  const normalized = lines.join(" ");
+  const numericLines = lines.filter((line) => /\d/.test(line));
+
+  return (
+    /\bmeasure by (weight|volume)\b/i.test(normalized) ||
+    /\bfor every \d+(?:[.,]\d+)?\s*kg\b/i.test(normalized) ||
+    numericLines.filter((line) => hasCompositionSignal(line)).length >= 2
+  );
+}
+
+function isExplanatoryCompositionSection(sectionTitle: string): boolean {
+  return /^(why|should|can|what is the role of|we have)/i.test(sectionTitle.trim());
 }
 
 function hasToolSignal(line: string): boolean {

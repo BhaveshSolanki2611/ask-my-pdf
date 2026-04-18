@@ -442,13 +442,23 @@ function compositionQuestionSectionPenalty(
   }
 
   let penalty = 1.1;
+  const explanatoryQuestion =
+    /^(why|should|can|what is the role of|we have)/i.test(sectionTitle);
 
   if (!hasNumericDensity(body)) {
     penalty += 0.55;
   }
 
-  if (!/\b(ratio|water|booster|quantity|proportion|mix)\b/i.test(sectionTitle)) {
+  if (
+    !/\b(ratio|water|booster|quantity|proportion|mix|measure|for every)\b/i.test(
+      `${sectionTitle} ${body}`,
+    )
+  ) {
     penalty += 0.2;
+  }
+
+  if (explanatoryQuestion) {
+    penalty += 0.95;
   }
 
   return -penalty;
