@@ -1103,7 +1103,19 @@ function normalizeLine(value: string): string {
 }
 
 function cleanEvidenceLine(value: string): string {
-  return normalizeWhitespace(value).replace(/\s+/g, " ").trim();
+  return normalizeWhitespace(
+    value
+      .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/?(?:u|strong|em|span|p|div|b|i)[^>]*>/gi, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/\*([^*\s][^*]*?)\*/g, "$1")
+      .replace(/_([^_\s][^_]*?)_/g, "$1")
+      .replace(/`([^`]+)`/g, "$1"),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function needsClarification(

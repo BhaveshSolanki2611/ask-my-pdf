@@ -34,6 +34,38 @@ function isHeading(line: string): RegExpMatchArray | null {
   return line.match(/^(#{1,6})\s+(.+)$/);
 }
 
+function isMarkdownImageLine(line: string): boolean {
+  return /^!\[[^\]]*]\([^)]+\)$/.test(line) || /^<img\b/i.test(line);
+}
+
+function cleanMarkdownLine(line: string): string {
+  return normalizeWhitespace(
+    line
+      .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/<\/?(?:u|strong|em|span|p|div|b|i)[^>]*>/gi, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/\*([^*\s][^*]*?)\*/g, "$1")
+      .replace(/_([^_\s][^_]*?)_/g, "$1")
+      .replace(/`([^`]+)`/g, "$1"),
+  );
+}
+
+function extractFaqQuestionText(text: string): string | null {
+  const normalized = cleanMarkdownLine(text);
+  const match = normalized.match(
+    /((?:what|why|how|can|is|are|do|does|should|will|when|where|which)\b.+\?)/i,
+  );
+
+  if (match?.[1]) {
+    return match[1].trim();
+  }
+
+  return normalized.endsWith("?") ? normalized : null;
+}
+
 function isMarkdownTableLine(line: string): boolean {
   return /^\|.+\|$/.test(line) || /^\|?[-: ]+\|[-|: ]+$/.test(line);
 }
@@ -313,7 +345,13 @@ function buildMarkdownDocumentMap(
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
 
-      const heading = isHeading(trimmed);
+      if (isMarkdownImageLine(trimmed)) {
+        continue;
+      }
+
+      const normalizedLine = cleanMarkdownLine(trimmed);
+
+      const heading = isHeading(normalizedLine);
 
       if (heading) {
         flushAll();
@@ -343,12 +381,12 @@ function buildMarkdownDocumentMap(
         continue;
       }
 
-      if (!trimmed) {
+      if (!normalizedLine) {
         flushAll();
         continue;
       }
 
-      if (looksLikeFaqQuestion(trimmed, sectionPath)) {
+      if (looksLikeFaqQuestion(normalizedLine, sectionPath)) {
         flushParagraph();
 
         if (calloutBuffer.length || tableBuffer.length || listBuffer.length) {
@@ -357,7 +395,7 @@ function buildMarkdownDocumentMap(
 
         flushFaq();
         currentFaq = {
-          question: trimmed,
+          question: extractFaqQuestionText(normalizedLine) ?? normalizedLine,
           answerLines: [],
           pageFrom: page.pageNumber,
           pageTo: page.pageNumber,
@@ -367,19 +405,19 @@ function buildMarkdownDocumentMap(
       }
 
       if (currentFaq) {
-        currentFaq.answerLines.push(trimmed);
+        currentFaq.answerLines.push(normalizedLine);
         currentFaq.pageTo = page.pageNumber;
         continue;
       }
 
-      if (isCalloutLine(trimmed)) {
+      if (isCalloutLine(normalizedLine)) {
         flushParagraph();
 
         if (tableBuffer.length || listBuffer.length) {
           flushAll();
         }
 
-        calloutBuffer.push(trimmed.replace(/^>\s*/, ""));
+        calloutBuffer.push(normalizedLine.replace(/^>\s*/, ""));
         continue;
       }
 
@@ -387,14 +425,14 @@ function buildMarkdownDocumentMap(
         flushAll();
       }
 
-      if (isMarkdownTableLine(trimmed)) {
+      if (isMarkdownTableLine(normalizedLine)) {
         flushParagraph();
 
         if (listBuffer.length && listType) {
           flushAll();
         }
 
-        tableBuffer.push(trimmed);
+        tableBuffer.push(normalizedLine);
         continue;
       }
 
@@ -402,15 +440,18 @@ function buildMarkdownDocumentMap(
         flushAll();
       }
 
-      if (isOrderedListLine(trimmed) || isBulletListLine(trimmed)) {
+      if (
+        isOrderedListLine(normalizedLine) ||
+        isBulletListLine(normalizedLine)
+      ) {
         flushParagraph();
-        listType = isOrderedListLine(trimmed) ? "procedure" : "list";
-        listBuffer.push(trimmed);
+        listType = isOrderedListLine(normalizedLine) ? "procedure" : "list";
+        listBuffer.push(normalizedLine);
         continue;
       }
 
       if (listBuffer.length && /^\s{2,}\S+/.test(rawLine)) {
-        listBuffer.push(trimmed);
+        listBuffer.push(normalizedLine);
         continue;
       }
 
@@ -418,7 +459,7 @@ function buildMarkdownDocumentMap(
         flushAll();
       }
 
-      paragraphBuffer.push(trimmed);
+      paragraphBuffer.push(normalizedLine);
     }
 
     flushAll();
@@ -743,9 +784,9 @@ function cleanHeadingText(text: string): string {
 }
 
 function looksLikeFaqQuestion(text: string, sectionPath: string[]): boolean {
-  const normalized = text.trim();
+  const normalized = extractFaqQuestionText(text);
 
-  if (!normalized.endsWith("?") || normalized.length < 8) {
+  if (!normalized || normalized.length < 8) {
     return false;
   }
 
@@ -753,7 +794,7 @@ function looksLikeFaqQuestion(text: string, sectionPath: string[]): boolean {
     /^((what|why|how|can|is|are|do|does|should|will|when|where|which)\b)/i.test(
       normalized,
     ) ||
-    sectionPath.some((entry) => /^faq\b/i.test(entry))
+    sectionPath.some((entry) => /^faq\b/i.test(cleanMarkdownLine(entry)))
   );
 }
 

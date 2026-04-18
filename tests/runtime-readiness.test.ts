@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   __envTestUtils,
   getRuntimeReadiness,
+  isHostedAiConfigured,
   shouldUseInlineIngestion,
 } from "@/lib/env";
 
@@ -10,6 +11,7 @@ const ENV_KEYS = [
   "BLOB_READ_WRITE_TOKEN",
   "LLAMA_CLOUD_API_KEY",
   "AI_GATEWAY_API_KEY",
+  "VERCEL_OIDC_TOKEN",
   "VERCEL",
   "VERCEL_ENV",
   "VERCEL_URL",
@@ -124,5 +126,17 @@ describe("runtime readiness", () => {
     expect(readiness.uploadsEnabled).toBe(true);
     expect(readiness.missingEnvVars).toEqual([]);
     expect(shouldUseInlineIngestion()).toBe(false);
+  });
+
+  it("does not treat a pulled OIDC token as hosted AI outside Vercel", () => {
+    setEnv({
+      VERCEL: undefined,
+      VERCEL_ENV: undefined,
+      VERCEL_URL: undefined,
+      VERCEL_OIDC_TOKEN: "pulled-local-token",
+      AI_GATEWAY_API_KEY: undefined,
+    });
+
+    expect(isHostedAiConfigured()).toBe(false);
   });
 });

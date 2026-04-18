@@ -152,6 +152,7 @@ function baseChunkScore(chunk: StoredChunk, signals: QuestionSignals): number {
     ? compositionFormulaBonus(chunk)
     : 0;
   const faqPenalty = compositionFaqPenalty(chunk, signals);
+  const questionSectionPenalty = compositionQuestionSectionPenalty(chunk, signals);
   const toolingBoost =
     signals.isToolingQuery &&
     /(tool|rammer|rammers|vibrator|vibrators|bamboo|mechanical|manual)/i.test(
@@ -196,6 +197,7 @@ function baseChunkScore(chunk: StoredChunk, signals: QuestionSignals): number {
     compositionBoost +
     formulaBoost +
     faqPenalty +
+    questionSectionPenalty +
     toolingBoost +
     curingBoost +
     curingSectionBoost +
@@ -419,6 +421,34 @@ function compositionFaqPenalty(
 
   if (numericTokens.length < 2) {
     penalty += 0.6;
+  }
+
+  return -penalty;
+}
+
+function compositionQuestionSectionPenalty(
+  chunk: StoredChunk,
+  signals: QuestionSignals,
+): number {
+  if (!signals.isCompositionQuery || chunk.chunkType === "faq") {
+    return 0;
+  }
+
+  const sectionTitle = normalizeQuery(chunk.sectionPath.at(-1) ?? "");
+  const body = cleanChunkBody(chunk);
+
+  if (!sectionTitle.endsWith("?")) {
+    return 0;
+  }
+
+  let penalty = 1.1;
+
+  if (!hasNumericDensity(body)) {
+    penalty += 0.55;
+  }
+
+  if (!/\b(ratio|water|booster|quantity|proportion|mix)\b/i.test(sectionTitle)) {
+    penalty += 0.2;
   }
 
   return -penalty;

@@ -85,4 +85,43 @@ describe("layout chunking and parser regressions", () => {
 
     expect(pages[0].lines.map((line) => line.text)).not.toContain("14 14");
   });
+
+  it("splits markdown FAQ pages into clean FAQ chunks and drops image-only lines", () => {
+    const parsed: ParsedPdf = {
+      pageCount: 1,
+      parserMeta: {
+        provider: "llamaparse",
+      },
+      contentFormat: "markdown",
+      pages: [
+        {
+          pageNumber: 1,
+          text: [
+            "# **FAQ** *SUBSTRATE*",
+            "<u>Can FAT LIME concrete be used over foam insulation directly?</u>",
+            "No! It does not bond with plastic/ foam insulation. Use a thin coat of cement concrete.",
+            "![A close-up floor photo](page_20_image_1_v2.jpg)",
+            "<u>Can FAT LIME concrete be applied over underfloor heating?</u>",
+            "Yes, follow the manufacturer's instructions and then follow with FAT LIME concrete as normal.",
+          ].join("\n"),
+          lines: [],
+          source: "markdown",
+        },
+      ],
+    };
+
+    const documentMap = buildDocumentMap(parsed, 300);
+    const faqChunks = documentMap.chunks.filter((chunk) => chunk.chunkType === "faq");
+
+    expect(faqChunks).toHaveLength(2);
+    expect(documentMap.chunks.every((chunk) => !chunk.text.includes("!["))).toBe(true);
+    expect(documentMap.chunks.every((chunk) => !chunk.text.includes("<u>"))).toBe(true);
+    expect(faqChunks[0]?.sectionPath).toEqual(["FAQ SUBSTRATE"]);
+    expect(faqChunks[0]?.text).toContain(
+      "Question: Can FAT LIME concrete be used over foam insulation directly?",
+    );
+    expect(faqChunks[1]?.text).toContain(
+      "Question: Can FAT LIME concrete be applied over underfloor heating?",
+    );
+  });
 });

@@ -39,8 +39,9 @@ export function getServerEnv(): ServerEnv {
 
 export function assertAiGatewayConfigured(): void {
   const env = getServerEnv();
+  const hasHostedOidc = Boolean(env.VERCEL_OIDC_TOKEN && isVercelDeployment());
 
-  if (!env.AI_GATEWAY_API_KEY && !env.VERCEL_OIDC_TOKEN) {
+  if (!env.AI_GATEWAY_API_KEY && !hasHostedOidc) {
     throw new Error(
       "No hosted AI credentials are configured. The app will fall back to a local heuristic answer mode.",
     );
@@ -61,7 +62,7 @@ export function isLlamaParseConfigured(): boolean {
 
 export function isHostedAiConfigured(): boolean {
   const env = getServerEnv();
-  return Boolean(env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN);
+  return Boolean(env.AI_GATEWAY_API_KEY || (env.VERCEL_OIDC_TOKEN && isVercelDeployment()));
 }
 
 export function isVercelDeployment(): boolean {

@@ -42,12 +42,12 @@ describe("document ingestion versioning", () => {
     expect(needsDocumentReingestion(document)).toBe(false);
   });
 
-  it("does not reingest hosted-parser documents", () => {
+  it("reingests hosted-parser documents when the ingestion version changes", () => {
     const document = makeDocument({
       provider: "llamaparse",
       ingestionVersion: CURRENT_INGESTION_VERSION - 1,
     });
 
-    expect(needsDocumentReingestion(document)).toBe(false);
+    expect(needsDocumentReingestion(document)).toBe(true);
   });
 });
