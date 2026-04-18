@@ -23,7 +23,7 @@ export type ChatMode = (typeof CHAT_MODES)[number];
 export type ChunkType = (typeof CHUNK_TYPES)[number];
 
 export type RuntimeCapabilities = {
-  database: "postgres" | "local-json";
+  database: "postgres" | "blob-json" | "local-json";
   storage: "vercel-blob" | "local-filesystem";
   parser: "llamaparse" | "local-layout-parser";
   ai: "hosted-model" | "local-heuristic";
